@@ -1,0 +1,7 @@
+sudo ifconfig <NIC> down
+sudo iwconfig <NIC> mode monitor
+
+
+airmon-ng check kill
+airmon-ng start wlan0
+airodump-ng wlan0mo

