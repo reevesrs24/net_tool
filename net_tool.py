@@ -3,12 +3,15 @@ import os
 from scapy.all import *
 
 interface= "wlx00c0ca84aba2"
-ap_mac = "e0:22:04:2f:4d:0e"
+ap_mac = "94:53:30:ed:7f:0a"
 device_mac = "60:be:b5:f0:23:b1"
-
+macAddresses = []
+probeReqs = []
+hidden_aps = []
+aps = []
 
 def sniff_probe_requests(pkt):
-	probeReqs = []
+	
 
 	if pkt.haslayer(Dot11ProbeReq):
 		netName = pkt.getlayer(Dot11ProbeReq).info
@@ -17,17 +20,17 @@ def sniff_probe_requests(pkt):
 			print "[+] Detected new probe request: " + netName
 
 def sniff_all_mac_addresses(pkt):
-	macAddresses = []
+	
 
 	if pkt.haslayer(Dot11):
 		layer = pkt.getlayer(Dot11)
+		
 		if layer.addr2 and (layer.addr2 not in macAddresses) and layer.addr1 == ap_mac:
 			macAddresses.append(layer.addr2)
 			print "[+] Detected new mac address: " + layer.addr2
 
 def find_hidden_ap(pkt):
-	hidden_aps = []
-	aps = []
+	
 
 	if pkt.haslayer(Dot11ProbeResp):
 		addr2 = pkt.getlayer(Dot11).addr2
